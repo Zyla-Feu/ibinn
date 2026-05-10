@@ -17,13 +17,14 @@ def dct_1d(x):
 
     v = torch.cat([x[:, ::2], x[:, 1::2].flip([1])], dim=1)
 
-    Vc = torch.rfft(v, 1, onesided=False)
+    # torch.rfft(..., onesided=False) was removed; full FFT along signal dim
+    Vc = torch.fft.fft(v, dim=1)
 
     k = - torch.arange(N, dtype=x.dtype, device=x.device)[None, :] * np.pi / (2 * N)
     W_r = torch.cos(k)
     W_i = torch.sin(k)
 
-    V = Vc[:, :, 0] * W_r - Vc[:, :, 1] * W_i
+    V = Vc.real * W_r - Vc.imag * W_i
     V = 2 * V.view(*x_shape)
 
     return V
@@ -52,9 +53,9 @@ def idct_1d(X):
     V_r = V_t_r * W_r - V_t_i * W_i
     V_i = V_t_r * W_i + V_t_i * W_r
 
-    V = torch.cat([V_r.unsqueeze(2), V_i.unsqueeze(2)], dim=2)
-
-    v = torch.irfft(V, 1, onesided=False)
+    # torch.irfft removed; inverse FFT then take real part (matches old irfft)
+    V_c = torch.complex(V_r, V_i)
+    v = torch.fft.ifft(V_c, dim=1).real
     x = v.new_zeros(v.shape)
     x[:, ::2] += v[:, :N - (N // 2)]
     x[:, 1::2] += v.flip([1])[:, :N // 2]
@@ -69,8 +70,8 @@ class DCTPooling2d(nn.Module):
         self.rebalance = 2 * (self.N +1) / rebalance
         self.jac = (self.N**2 * self.ch) * np.log(rebalance)
 
-        assert torch.cuda.is_available(), "please father, give 1 cuda"
-        I = torch.eye(self.N).cuda()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        I = torch.eye(self.N, device=device, dtype=torch.float32)
 
         self.weight = dct_1d(I).t()
         self.inv_weight = idct_1d(I).t()
