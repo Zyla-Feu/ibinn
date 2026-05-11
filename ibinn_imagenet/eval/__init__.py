@@ -73,6 +73,8 @@ def construct_inn(args, verbose=False):
         synchronized_batchnorm=args['model_synchronized_batchnorm']
     )
 
+    n_classes = int(args.get('n_classes', 1000))
+
     head = InvertibleMulticlassClassifier(
         fc_width =                  int(args['model_fc_width']),
         n_loss_dims_1d =            int(args['model_n_loss_dims_1d']),
@@ -89,7 +91,7 @@ def construct_inn(args, verbose=False):
         mu_init =                   float(args['training_mu_init']),
         mu_conv_init =              float(args['training_mu_conv_init']),
         input_dims =                (3, 224, 224),
-        n_classes =                 1000,
+        n_classes =                 n_classes,
         n_total_dims_1d =           3 * 224 * 224,
         mu_low_rank_k =             int(args['training_mu_low_rank_k']),
         n_loss_dims_1d =            int(args['model_n_loss_dims_1d']),

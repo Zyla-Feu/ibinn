@@ -8,6 +8,7 @@ import numpy as np
 import torch.optim
 
 from ..data.imagenet import Imagenet
+from ..data.binary_malware import BinaryMalwareImageData
 
 from ..model.backbones.invertible_resnet import InvertibleResNet
 from ..model.heads.invertible_multiclass_classifier import InvertibleMulticlassClassifier
@@ -19,9 +20,11 @@ from ..model import CouplingType
 
 @click.command()
 @click.option('--checkpoints_out_folder', default='default_out', help='Base directory for all outputs')
-@click.option('--data_root_folder_train', default='../data/imagenet', help='Root folder for training dataset')
-@click.option('--data_root_folder_val', default='../data/imagenet', help='Root folder for validation dataset')
+@click.option('--dataset_root', default=None, help='Malware vs benign dataset root (train/val/benign|malware). If set, overrides ImageNet paths.')
+@click.option('--data_root_folder_train', default='../data/imagenet', help='Root folder for training dataset (ImageNet layout only)')
+@click.option('--data_root_folder_val', default='../data/imagenet', help='Root folder for validation dataset (ImageNet layout only)')
 @click.option('--data_batch_size', default=16, help='Batch size')
+@click.option('--data_num_workers', default=4, help='DataLoader num_workers')
 @click.option('--model_n_loss_dims_1d', default=1024, help='Size of latent space vector')
 @click.option('--model_coupling_type_name', default='Slow', help='Type of coupling block: GLOW/SLOW')
 @click.option('--model_clamp', default=0.7, help='Clamp output of coupling block')
@@ -53,7 +56,14 @@ from ..model import CouplingType
 @click.option('--checkpoints_extension', default='', help='Custom extension to the output model file for ablations')
 def train(**args):
 
-    data = Imagenet(args['data_root_folder_train'], args['data_root_folder_val'], int(args['data_batch_size']))
+    if args['dataset_root']:
+        data = BinaryMalwareImageData(
+            args['dataset_root'],
+            int(args['data_batch_size']),
+            num_workers=int(args['data_num_workers']),
+        )
+    else:
+        data = Imagenet(args['data_root_folder_train'], args['data_root_folder_val'], int(args['data_batch_size']))
 
     extension = args['checkpoints_extension']
 
@@ -111,7 +121,9 @@ def train(**args):
     inn.cuda()
 
     inn_parallel = torch.nn.DataParallel(inn)
-    n_batches_per_epoch = (len(data.train_data.imgs)//data.batch_size)
+    n_batches_per_epoch = len(data.train_loader)
+    if n_batches_per_epoch == 0:
+        raise RuntimeError("Training loader is empty; check train/benign and train/malware folders.")
     N_epochs = int(args['training_n_epochs'])
 
     train_nll = args['training_train_nll']

@@ -1,3 +1,9 @@
 **/__pycache__/
 FrEIA/
 *.pyc
+
+# Local datasets, checkpoints, accidental CLI artifacts
+dataset/
+runs/
+default_out/
+*.avg.pt

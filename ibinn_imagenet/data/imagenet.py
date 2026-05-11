@@ -57,10 +57,16 @@ class Imagenet():
             T.Normalize(self._mu_img, self._std_img)
         ]), target_transform=T.Compose([T.Lambda(self._class_to_one_hot)]))
 
-        indices = np.random.choice(len(self.val_data_fast.imgs), self.val_fast_set_size).tolist()
-        self.val_data_fast.imgs = [self.val_data_fast.imgs[i] for i in indices]
-        self.val_data_fast.samples = self.val_data_fast.imgs
+        n_val = len(self.val_data_fast)
+        if n_val == 0:
+            raise RuntimeError("Validation set is empty (val folder has no images).")
+        take = min(self.val_fast_set_size, n_val)
+        indices = np.random.choice(n_val, size=take, replace=False).tolist()
+        samples = self.val_data_fast.samples
+        self.val_data_fast.samples = [samples[i] for i in indices]
         self.val_data_fast.targets = [s[1] for s in self.val_data_fast.samples]
+        if hasattr(self.val_data_fast, "imgs"):
+            self.val_data_fast.imgs = self.val_data_fast.samples
 
         self.val_data = ImageFolder(self.root_folder_val + "/val", transform=T.Compose([
             T.Resize(256),

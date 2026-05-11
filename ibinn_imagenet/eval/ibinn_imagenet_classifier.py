@@ -2,6 +2,7 @@ import click
 import sys
 
 from ..data.imagenet import Imagenet
+from ..data.binary_malware import BinaryMalwareImageData
 from . import construct_inn, construct_feed_forward
 from . import accuracy
 
@@ -22,9 +23,12 @@ def process_evaluation(args, model, data, evaluation):
 @click.command()
 @click.option('--model_file_path', default='', help='Path to the trained ibinn model')
 @click.option('--evaluation', default='accuracy', help='Evaluation method (accuracy, feed_forward_accuracy)')
-@click.option('--data_root_folder_train', default='../imagenet', help='Root folder for training dataset')
-@click.option('--data_root_folder_val', default='../imagenet', help='Root folder for validation dataset')
+@click.option('--dataset_root', default=None, help='Malware vs benign dataset root; if set, use train/val/test layout.')
+@click.option('--eval_split', default='val', type=click.Choice(['val', 'test']), help='Which split to evaluate when --dataset_root is set.')
+@click.option('--data_root_folder_train', default='../imagenet', help='Root folder for training dataset (ImageNet layout)')
+@click.option('--data_root_folder_val', default='../imagenet', help='Root folder for validation dataset (ImageNet layout)')
 @click.option('--data_batch_size', default=16, help='Batch size')
+@click.option('--data_num_workers', default=4, help='DataLoader num_workers')
 @click.option('--model_n_loss_dims_1d', default=1024, help='Size of latent space vector')
 @click.option('--model_coupling_type_name', default='Slow', help='Type of coupling block: GLOW/SLOW')
 @click.option('--model_clamp', default=0.7, help='Clamp output of coupling block')
@@ -56,7 +60,18 @@ def process_evaluation(args, model, data, evaluation):
 @click.option('--checkpoints_extension', default='', help='Custom extension to the output model file for ablations')
 def eval(**args):
 
-    data = Imagenet(args['data_root_folder_train'], args['data_root_folder_val'], int(args['data_batch_size']))
+    if args['dataset_root']:
+        data = BinaryMalwareImageData(
+            args['dataset_root'],
+            int(args['data_batch_size']),
+            num_workers=int(args['data_num_workers']),
+            for_training=False,
+            eval_split=args['eval_split'],
+        )
+    else:
+        data = Imagenet(args['data_root_folder_train'], args['data_root_folder_val'], int(args['data_batch_size']))
+
+    args['n_classes'] = data.n_classes
 
     if 'feed_forward' in args['evaluation']:
         print("Loading Feed Forward Model")

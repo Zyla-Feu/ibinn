@@ -39,6 +39,37 @@ All options are visible and explained when executing the ibinn_imagenet_classifi
 python -m ibinn_imagenet.train.ibinn_imagenet_classifier --help
 ```
 
+### Android malware images (2-class: benign vs malware)
+
+Use a directory layout like:
+
+```text
+dataset/
+  train/benign/     *.jpg
+  train/malware/    *.jpg
+  val/benign/
+  val/malware/
+  test/benign/      (optional, for final evaluation)
+  test/malware/
+```
+
+`ImageFolder` sorts class names; `benign` is class 0 and `malware` is class 1.
+
+Train:
+
+```sh
+python -m ibinn_imagenet.train.ibinn_imagenet_classifier --dataset_root /path/to/dataset --checkpoints_out_folder runs/malware_out
+```
+
+Evaluate (point `--model_file_path` to a checkpoint saved under `checkpoints_out_folder`):
+
+```sh
+python -m ibinn_imagenet.eval.ibinn_imagenet_classifier --dataset_root /path/to/dataset --eval_split val --model_file_path runs/malware_out/<checkpoint>.pt
+# use --eval_split test to score the test split
+```
+
+On small datasets, use a lower `--checkpoints_interval_log` (e.g. `5` or `10`) so fast validation runs during the epoch.
+
 If you aim to reproduce our results consider installing xptl (https://github.com/titus-leistner/xptl) from Titus Leistner and use the *.ini-files provided under ibinn_imagenet/config
 
 With xptl installed start a training by executing:
