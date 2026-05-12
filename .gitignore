@@ -4,6 +4,7 @@ FrEIA/
 
 # Local datasets, checkpoints, accidental CLI artifacts
 dataset/
+dataset.zip
 runs/
 default_out/
 *.avg.pt
